@@ -6,7 +6,7 @@ import nltk
 import scipy
 import igraph
 
-from utils.TransformerDecomposition import TransformerDecomposition
+#from utils.TransformerDecomposition import TransformerDecomposition
 
 """
 nltk.download('punkt') # for tokenization
@@ -22,7 +22,7 @@ class features_dataset:
         """
         if prepocess_all:
             self.glove = self.load_glove_model("./data_baseline/glove6B/glove.6B.100d.txt")
-            self.decomposition = TransformerDecomposition()
+            #self.decomposition = TransformerDecomposition()
 
         with open("./data_baseline/testing_set.txt", "r") as f:
             reader = csv.reader(f)
@@ -305,47 +305,55 @@ class features_dataset:
 
     def add_feature_graph(self):
 
-        for type_data in [self.testing_set, self.training_set_reduced]:
+        for k, type_data in enumerate([self.training_set_reduced, self.testing_set]):
 
-            inverse_shortest_distances = []
-            inverse_shortest_distances_und = []
             comm_neighbors = []
             no_edge = []
+            shortest_path_dijkstra =[]
             counter = 0
+            shortest_path_dijkstra_und =[]
             for i in range(len(type_data)):
                 # for i in range(100):
                 source = type_data[i][0]
                 target = type_data[i][1]
-
                 index_source = self.IDs.index(source)
                 index_target = self.IDs.index(target)
-
-                self.G.delete_edges((index_source, index_target))
-
-                inverse_shortest_distances.append(1. / (self.G.shortest_paths_dijkstra(source=source, target=target))[0][0]+0.)
-                inverse_shortest_distances_und.append(1. / (self.G_und.shortest_paths_dijkstra(source=source, target=target))[0][0]+0.)
-                self.G_und.add_edge(index_source, index_target)
-
                 list_source = self.G.neighbors(source)
                 list_target = self.G.neighbors(target)
                 comm_neighbors.append(len(list(set(list_source).intersection(list_target))))
-
                 no_edge.append(self.G.edge_disjoint_paths(index_source, index_target))
+                if k == 0 and type_data[i][2] == "1":
+                    self.G.delete_edges((index_source, index_target))
+                    self.G_und.delete_edges((index_source, index_target))
+                short_path = min(100000, self.G.shortest_paths_dijkstra(source=source, target=target)[0][0])
+                shortest_path_dijkstra.append(short_path)
+                short_path_und = min(100000, self.G_und.shortest_paths_dijkstra(source=source, target=target)[0][0])
+                shortest_path_dijkstra_und.append(short_path_und)
+                if k == 0 and type_data[i][2] == "1":
+                    self.G.add_edge(index_source, index_target)
+                    self.G_und.add_edge(index_source, index_target)
 
                 counter += 1
                 if counter % 1000 == True:
                     print(counter, "testing examples processsed")
+
+
+
+
             if type_data == self.training_set_reduced:
-                np.save('./features_data/inverse_shortest_distances_train.npy', np.array(inverse_shortest_distances))
-                np.save('./features_data/inverse_shortest_distances_und_train.npy', np.array(inverse_shortest_distances_und))
+                np.save('./features_data/inverse_shortest_distances_train.npy', np.array(shortest_path_dijkstra))
+                np.save('./features_data/inverse_shortest_distances_und_train.npy', np.array(shortest_path_dijkstra_und))
                 np.save('./features_data/comm_neighbors_train.npy', np.array(comm_neighbors))
                 np.save('./features_data/no_edge_train.npy', np.array(no_edge))
             else:
-                np.save('./features_data/inverse_shortest_distances_test.npy', np.array(inverse_shortest_distances))
+                np.save('./features_data/inverse_shortest_distances_test.npy', np.array(shortest_path_dijkstra))
                 np.save('./features_data/inverse_shortest_distances_und_test.npy',
-                        np.array(inverse_shortest_distances_und))
+                        np.array(shortest_path_dijkstra_und))
                 np.save('./features_data/comm_neighbors_test.npy', np.array(comm_neighbors))
                 np.save('./features_data/no_edge_test.npy', np.array(no_edge))
+
+
+
 
 
 
