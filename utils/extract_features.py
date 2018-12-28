@@ -5,7 +5,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import nltk
 import scipy
 import igraph
-
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import linear_kernel
 #from utils.TransformerDecomposition import TransformerDecomposition
 
 """
@@ -78,185 +79,199 @@ class features_dataset:
         self.stpwds = set(nltk.corpus.stopwords.words("english"))
         self.stemmer = nltk.stem.PorterStemmer()
 
-    def prepocess_train_data(self):
-
-        # number of overlapping words in title
-        overlap_title = []
-
-        # temporal distance between the papers
-        temp_diff = []
-
-        # number of common authors
-        comm_auth = []
-
-        # number
-        num_inc_edges =[]
-
-        #distance
-        Distance_title = []
-        Distance_abstract = []
-
-        counter = 0
-        for i in range(len(self.training_set_reduced)):
-        #for i in range(100):
-            source = self.training_set_reduced[i][0]
-            target = self.training_set_reduced[i][1]
-
-            source_info = [element for element in self.node_info if element[0] == source][0]
-            target_info = [element for element in self.node_info if element[0] == target][0]
 
 
-            # convert to lowercase and tokenize
-            source_title = source_info[2].lower().split(" ")
-            # remove stopwords
-            source_title = [token for token in source_title if token not in self.stpwds]
-            source_title = [self.stemmer.stem(token) for token in source_title]
+    def prepocess_data(self):
 
-            target_title = target_info[2].lower().split(" ")
-            target_title = [token for token in target_title if token not in self.stpwds]
-            target_title = [self.stemmer.stem(token) for token in target_title]
+        for k, type_data in enumerate([self.training_set_reduced, self.testing_set]):
 
-            source_title_glove = self.get_glove_matrix(source_info[2].lower().split(" "))
-            target_title_glove = self.get_glove_matrix(target_info[2].lower().split(" "))
+            # number of overlapping words in title
+            overlap_title = []
+            # temporal distance between the papers
+            temp_diff = []
+            # number of common authors
+            comm_auth = []
+            # number
+            num_inc_edges =[]
+            #distance
+            Distance_title = []
 
-            source_abstract_glove = self.get_glove_matrix(source_info[5].lower().split(" "))
-            target_abstract_glove = self.get_glove_matrix(target_info[5].lower().split(" "))
+            Distance_abstract = []
 
-            distance_title = scipy.spatial.distance.euclidean(source_title_glove, target_title_glove)
-            distance_abstract = scipy.spatial.distance.euclidean(source_abstract_glove, target_abstract_glove)
-            Distance_abstract.append(distance_abstract)
-            Distance_title.append(distance_title)
+            comm_neighbors = []
 
-            source_auth = source_info[3].split(",")
-            target_auth = target_info[3].split(",")
+            no_edge = []
 
-            overlap_title.append(len(set(source_title).intersection(set(target_title))))
-            temp_diff.append(int(source_info[1]) - int(target_info[1]))
-            comm_auth.append(len(set(source_auth).intersection(set(target_auth))))
-            num_inc_edges.append(len([element[1] for element in self.training_set if element[1] == target])
-                                 + len([element[1] for element in self.testing_set if element[1] == target]))
+            tfidf_distance_corpus = []
+
+            tfidf_distance_titles = []
+
+            shortest_path_dijkstra = []
+
+            shortest_path_dijkstra_und = []
+
+            jaccard_und = []
+
+            Resource_allocation = []
+
+            counter = 0
+            for i in range(len(type_data)):
+                source = self.training_set_reduced[i][0]
+                target = self.training_set_reduced[i][1]
+
+                source_info = [element for element in self.node_info if element[0] == source][0]
+                target_info = [element for element in self.node_info if element[0] == target][0]
+
+                index_source = self.IDs.index(source)
+                index_target = self.IDs.index(target)
+                list_source = self.G.neighbors(source)
+                list_target = self.G.neighbors(target)
 
 
-            #print(self.decomposition.apply(source_info[2].lower().split(" ")))
+                # convert to lowercase and tokenize
+                source_title = source_info[2].lower().split(" ")
+                # remove stopwords
+                source_title = [token for token in source_title if token not in self.stpwds]
+                source_title = [self.stemmer.stem(token) for token in source_title]
 
-            counter += 1
-            if counter % 1000 == True:
-                print(counter, "training examples processsed")
+                target_title = target_info[2].lower().split(" ")
+                target_title = [token for token in target_title if token not in self.stpwds]
+                target_title = [self.stemmer.stem(token) for token in target_title]
+
+                source_title_glove = self.get_glove_matrix(source_info[2].lower().split(" "))
+                target_title_glove = self.get_glove_matrix(target_info[2].lower().split(" "))
+
+                source_abstract_glove = self.get_glove_matrix(source_info[5].lower().split(" "))
+                target_abstract_glove = self.get_glove_matrix(target_info[5].lower().split(" "))
+
+                distance_title = scipy.spatial.distance.euclidean(source_title_glove, target_title_glove)
+                distance_abstract = scipy.spatial.distance.euclidean(source_abstract_glove, target_abstract_glove)
+                Distance_abstract.append(distance_abstract)
+                Distance_title.append(distance_title)
+
+                source_auth = source_info[3].split(",")
+                target_auth = target_info[3].split(",")
+
+                overlap_title.append(len(set(source_title).intersection(set(target_title))))
+                temp_diff.append(int(source_info[1]) - int(target_info[1]))
+                comm_auth.append(len(set(source_auth).intersection(set(target_auth))))
+                num_inc_edges.append(len([element[1] for element in self.training_set if element[1] == target])
+                                     + len([element[1] for element in self.testing_set if element[1] == target]))
+
+                comm_neighbors.append(len(list(set(list_source).intersection(list_target))))
+                no_edge.append(self.G.edge_disjoint_paths(index_source, index_target))
+                if k == 0 and type_data[i][2] == "1":
+                    self.G.delete_edges((index_source, index_target))
+                    self.G_und.delete_edges((index_source, index_target))
+                short_path = min(100000, self.G.shortest_paths_dijkstra(source=source, target=target)[0][0])
+                shortest_path_dijkstra.append(short_path)
+                short_path_und = min(100000, self.G_und.shortest_paths_dijkstra(source=source, target=target)[0][0])
+                shortest_path_dijkstra_und.append(short_path_und)
+                if k == 0 and type_data[i][2] == "1":
+                    self.G.add_edge(index_source, index_target)
+                    self.G_und.add_edge(index_source, index_target)
+
+                tfidf_distance_corpus.append(
+                    linear_kernel(self.features_TFIDF_corpus[index_source:index_source + 1],
+                                  self.features_TFIDF_corpus[index_target:index_target + 1]).flatten())
+                tfidf_distance_titles.append(
+                    linear_kernel(self.features_TFIDF_titles[index_source:index_source + 1],
+                                  self.features_TFIDF_titles[index_target:index_target + 1]).flatten())
+
+                if short_path_und > 2:
+                    jacc = 0
+                else:
+                    jacc = self.G_und.similarity_jaccard(pairs=[(index_source, index_target)])[0]
+                jaccard_und.append(jacc)
+
+                Resource_allocation.append(
+                    sum(1 / self.G_und.degree(w) for w in list(set(list_source).intersection(list_target))))
+
+                counter += 1
+                if counter % 1000 == True:
+                    print(counter, "training examples processsed")
+
+
 
         self.training_labels = np.array([int(element[2]) for element in self.training_set_reduced])
 
-        np.save('./features_data/overlap_title_train.npy', np.array(overlap_title))
-        np.save('./features_data/temp_diff_train.npy', np.array(temp_diff))
-        np.save('./features_data/comm_auth_train.npy', np.array(comm_auth))
-        np.save('./features_data/num_inc_edges_train.npy', np.array(num_inc_edges))
-        np.save('./features_data/labels.npy', np.array(self.training_labels))
-        np.save('./features_data/Distance_abstract_train.npy', np.array(Distance_abstract))
-        np.save('./features_data/Distance_title_train.npy', np.array(Distance_title))
-
-    def prepocess_test_data(self):
-
-        # we need to compute the features_data for the testing set
-
-        overlap_title = []
-        temp_diff = []
-        comm_auth = []
-        num_inc_edges = []
-        Distance_abstract = []
-        Distance_title = []
-
-        counter = 0
-        for i in range(len(self.testing_set)):
-        #for i in range(100):
-            source = self.testing_set[i][0]
-            target = self.testing_set[i][1]
-
-            source_info = [element for element in self.node_info if element[0] == source][0]
-            target_info = [element for element in self.node_info if element[0] == target][0]
-
-
-
-            # convert to lowercase and tokenize
-            source_title = source_info[2].lower().split(" ")
-            # remove stopwords
-            source_title = [token for token in source_title if token not in self.stpwds]
-            source_title = [self.stemmer.stem(token) for token in source_title]
-
-            target_title = target_info[2].lower().split(" ")
-            target_title = [token for token in target_title if token not in self.stpwds]
-            target_title = [self.stemmer.stem(token) for token in target_title]
-
-
-            source_auth = source_info[3].split(",")
-            target_auth = target_info[3].split(",")
-
-            overlap_title.append(len(set(source_title).intersection(set(target_title))))
-            temp_diff.append(int(source_info[1]) - int(target_info[1]))
-            comm_auth.append(len(set(source_auth).intersection(set(target_auth))))
-
-
-            num_inc_edges.append(len([element[1] for element in self.training_set if element[1] == target])
-                                 + len([element[1] for element in self.testing_set if element[1] == target]))
-
-            source_title_glove = self.get_glove_matrix(source_info[2].lower().split(" "))
-            target_title_glove = self.get_glove_matrix(target_info[2].lower().split(" "))
-
-            source_abstract_glove = self.get_glove_matrix(source_info[5].lower().split(" "))
-            target_abstract_glove = self.get_glove_matrix(target_info[5].lower().split(" "))
-
-
-
-            distance_title = scipy.spatial.distance.euclidean(source_title_glove, target_title_glove)
-            distance_abstract = scipy.spatial.distance.euclidean(source_abstract_glove, target_abstract_glove)
-            Distance_abstract.append(distance_abstract)
-            Distance_title.append(distance_title)
-
-            counter += 1
-            if counter % 1000 == True:
-                print(counter, "testing examples processsed")
-
-
-        np.save('./features_data/overlap_title_test.npy', np.array(overlap_title))
-        np.save('./features_data/temp_diff_test.npy', np.array(temp_diff))
-        np.save('./features_data/comm_test.npy', np.array(comm_auth))
-        np.save('./features_data/num_inc_edges_test.npy', np.array(num_inc_edges))
-        np.save('./features_data/Distance_abstract_test.npy', np.array(Distance_abstract))
-        np.save('./features_data/Distance_title_test.npy', np.array(Distance_title))
+        if type_data == self.training_set_reduced:
+            np.save('./features_data/shortest_path_dijkstra_train.npy', np.array(shortest_path_dijkstra))
+            np.save('./features_data/shortest_path_dijkstra_und_train.npy', np.array(shortest_path_dijkstra_und))
+            np.save('./features_data/comm_neighbors_train.npy', np.array(comm_neighbors))
+            np.save('./features_data/no_edge_train.npy', np.array(no_edge))
+            np.save('./features_data/overlap_title_train.npy', np.array(overlap_title))
+            np.save('./features_data/temp_diff_train.npy', np.array(temp_diff))
+            np.save('./features_data/comm_auth_train.npy', np.array(comm_auth))
+            np.save('./features_data/num_inc_edges_train.npy', np.array(num_inc_edges))
+            np.save('./features_data/labels.npy', np.array(self.training_labels))
+            np.save('./features_data/Distance_abstract_train.npy', np.array(Distance_abstract))
+            np.save('./features_data/Distance_title_train.npy', np.array(Distance_title))
+            np.save('./features_data/tfidf_distance_corpus_train.npy', np.array(tfidf_distance_corpus))
+            np.save('./features_data/tfidf_distance_titles_train.npy', np.array(tfidf_distance_titles))
+            np.save('./features_data/jaccard_und_train.npy', np.array(jaccard_und))
+            np.save('./features_data/Resource_allocation_train.npy', np.array(Resource_allocation))
+        else:
+            np.save('./features_data/shortest_path_dijkstra_test.npy', np.array(shortest_path_dijkstra))
+            np.save('./features_data/shortest_path_dijkstra_und_test.npy', np.array(shortest_path_dijkstra_und))
+            np.save('./features_data/comm_neighbors_test.npy', np.array(comm_neighbors))
+            np.save('./features_data/no_edge_test.npy', np.array(no_edge))
+            np.save('./features_data/overlap_title_test.npy', np.array(overlap_title))
+            np.save('./features_data/temp_diff_test.npy', np.array(temp_diff))
+            np.save('./features_data/comm_auth_test.npy', np.array(comm_auth))
+            np.save('./features_data/num_inc_edges_test.npy', np.array(num_inc_edges))
+            np.save('./features_data/Distance_abstract_test.npy', np.array(Distance_abstract))
+            np.save('./features_data/Distance_title_test.npy', np.array(Distance_title))
+            np.save('./features_data/tfidf_distance_corpus_test.npy', np.array(tfidf_distance_corpus))
+            np.save('./features_data/tfidf_distance_titles_test.npy', np.array(tfidf_distance_titles))
+            np.save('./features_data/jaccard_und_test.npy', np.array(jaccard_und))
+            np.save('./features_data/Resource_allocation_test.npy', np.array(Resource_allocation))
 
 
     def load_features_all(self):
 
-        overlap_title_test = np.load('./features_data/overlap_title_test.npy')
-        temp_diff_test = np.load('./features_data/temp_diff_test.npy')
-        comm_test = np.load('./features_data/comm_test.npy')
-        num_inc_edges_test = np.load('./features_data/num_inc_edges_test.npy')
-        overlap_title_train = np.load('./features_data/overlap_title_train.npy')
-        temp_diff_train = np.load('./features_data/temp_diff_train.npy')
-        comm_train = np.load('./features_data/comm_auth_train.npy')
-        num_inc_edges_train = np.load('./features_data/num_inc_edges_train.npy')
-        Distance_abstract_train = np.load('./features_data/Distance_abstract_train.npy')
-        Distance_title_train = np.load('./features_data/Distance_title_train.npy')
-        Distance_abstract_test = np.load('./features_data/Distance_abstract_test.npy')
-        Distance_title_test = np.load('./features_data/Distance_title_test.npy')
-        inverse_shortest_distances_train = np.load('./features_data/inverse_shortest_distances_train.npy')
-        inverse_shortest_distances_und_train = np.load('./features_data/inverse_shortest_distances_und_train.npy')
-        comm_neighbors_train = np.load('./features_data/comm_neighbors_train.npy')
-        no_edge_train = np.load('./features_data/no_edge_train.npy')
-        inverse_shortest_distances_test = np.load('./features_data/inverse_shortest_distances_test.npy')
-        inverse_shortest_distances_und_test = np.load('./features_data/inverse_shortest_distances_und_test.npy')
-        comm_neighbors_test = np.load('./features_data/comm_neighbors_test.npy')
-        no_edge_test = np.load('./features_data/no_edge_test.npy')
+        shortest_path_dijkstra = np.load('./features_data/shortest_path_dijkstra_train.npy')
+        shortest_path_dijkstra_und = np.load('./features_data/shortest_path_dijkstra_und_train.npy')
+        comm_neighbors = np.load('./features_data/comm_neighbors_train.npy')
+        no_edge = np.load('./features_data/no_edge_train.npy')
+        overlap_title = np.load('./features_data/overlap_title_train.npy')
+        temp_diff = np.load('./features_data/temp_diff_train.npy')
+        comm_auth = np.load('./features_data/comm_auth_train.npy')
+        num_inc_edges = np.load('./features_data/num_inc_edges_train.npy')
+        Distance_abstract = np.load('./features_data/Distance_abstract_train.npy')
+        Distance_title = np.load('./features_data/Distance_title_train.npy')
+        tfidf_distance_corpus = np.load('./features_data/tfidf_distance_corpus_train.npy')
+        tfidf_distance_titles = np.load('./features_data/tfidf_distance_titles_train.npy')
+        jaccard_und = np.load('./features_data/jaccard_und_train.npy')
+        Resource_allocation = np.load('./features_data/Resource_allocation_train.npy')
 
+        self.train_features = np.array([overlap_title, temp_diff, comm_auth,
+                                        num_inc_edges, Distance_abstract, Distance_title,
+                                        shortest_path_dijkstra, shortest_path_dijkstra_und,
+                                        comm_neighbors, no_edge, tfidf_distance_corpus, tfidf_distance_titles,
+                                        jaccard_und, Resource_allocation]).T
 
+        shortest_path_dijkstra = np.load('./features_data/shortest_path_dijkstra_test.npy')
+        shortest_path_dijkstra_und = np.load('./features_data/shortest_path_dijkstra_und_test.npy')
+        comm_neighbors = np.load('./features_data/comm_neighbors_test.npy')
+        no_edge = np.load('./features_data/no_edge_test.npy')
+        overlap_title = np.load('./features_data/overlap_title_test.npy')
+        temp_diff = np.load('./features_data/temp_diff_test.npy')
+        comm_auth = np.load('./features_data/comm_auth_test.npy')
+        num_inc_edges = np.load('./features_data/num_inc_edges_test.npy')
+        training_labels = np.load('./features_data/labels.npy')
+        Distance_abstract = np.load('./features_data/Distance_abstract_test.npy')
+        Distance_title = np.load('./features_data/Distance_title_test.npy')
+        tfidf_distance_corpus = np.load('./features_data/tfidf_distance_corpus_test.npy')
+        tfidf_distance_titles = np.load('./features_data/tfidf_distance_titles_test.npy')
+        jaccard_und = np.load('./features_data/jaccard_und_test.npy')
+        Resource_allocation = np.load('./features_data/Resource_allocation_test.npy')
 
-
-        self.train_features = np.array([overlap_title_train, temp_diff_train, comm_train,
-                             num_inc_edges_train, Distance_abstract_train, Distance_title_train,
-                            inverse_shortest_distances_train, inverse_shortest_distances_und_train,
-                            comm_neighbors_train, no_edge_train]).T
-        self.test_features = np.array([overlap_title_test, temp_diff_test, comm_test,
-                                   num_inc_edges_test, Distance_abstract_test, Distance_title_test,
-                                       inverse_shortest_distances_test, inverse_shortest_distances_und_test,
-                                       comm_neighbors_test, no_edge_test]).T
+        self.test_features = np.array([overlap_title, temp_diff, comm_auth,
+                                        num_inc_edges, Distance_abstract, Distance_title,
+                                        shortest_path_dijkstra, shortest_path_dijkstra_und,
+                                        comm_neighbors, no_edge, tfidf_distance_corpus, tfidf_distance_titles,
+                                        jaccard_und, Resource_allocation]).T
 
         self.training_labels = np.array([int(element[2]) for element in self.training_set_reduced])
         return(self.train_features, self.training_labels, self.test_features)
@@ -299,63 +314,6 @@ class features_dataset:
                 counter += 1
                 if counter % 1000 == True:
                     print(counter, "testing examples processsed")
-
-
-
-
-    def add_feature_graph(self):
-
-        for k, type_data in enumerate([self.training_set_reduced, self.testing_set]):
-
-            comm_neighbors = []
-            no_edge = []
-            shortest_path_dijkstra =[]
-            counter = 0
-            shortest_path_dijkstra_und =[]
-            for i in range(len(type_data)):
-                # for i in range(100):
-                source = type_data[i][0]
-                target = type_data[i][1]
-                index_source = self.IDs.index(source)
-                index_target = self.IDs.index(target)
-                list_source = self.G.neighbors(source)
-                list_target = self.G.neighbors(target)
-                comm_neighbors.append(len(list(set(list_source).intersection(list_target))))
-                no_edge.append(self.G.edge_disjoint_paths(index_source, index_target))
-                if k == 0 and type_data[i][2] == "1":
-                    self.G.delete_edges((index_source, index_target))
-                    self.G_und.delete_edges((index_source, index_target))
-                short_path = min(100000, self.G.shortest_paths_dijkstra(source=source, target=target)[0][0])
-                shortest_path_dijkstra.append(short_path)
-                short_path_und = min(100000, self.G_und.shortest_paths_dijkstra(source=source, target=target)[0][0])
-                shortest_path_dijkstra_und.append(short_path_und)
-                if k == 0 and type_data[i][2] == "1":
-                    self.G.add_edge(index_source, index_target)
-                    self.G_und.add_edge(index_source, index_target)
-
-                counter += 1
-                if counter % 1000 == True:
-                    print(counter, "testing examples processsed")
-
-
-
-
-            if type_data == self.training_set_reduced:
-                np.save('./features_data/inverse_shortest_distances_train.npy', np.array(shortest_path_dijkstra))
-                np.save('./features_data/inverse_shortest_distances_und_train.npy', np.array(shortest_path_dijkstra_und))
-                np.save('./features_data/comm_neighbors_train.npy', np.array(comm_neighbors))
-                np.save('./features_data/no_edge_train.npy', np.array(no_edge))
-            else:
-                np.save('./features_data/inverse_shortest_distances_test.npy', np.array(shortest_path_dijkstra))
-                np.save('./features_data/inverse_shortest_distances_und_test.npy',
-                        np.array(shortest_path_dijkstra_und))
-                np.save('./features_data/comm_neighbors_test.npy', np.array(comm_neighbors))
-                np.save('./features_data/no_edge_test.npy', np.array(no_edge))
-
-
-
-
-
 
 
 
