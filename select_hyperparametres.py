@@ -29,56 +29,6 @@ rf = RandomForestRegressor(random_state = 42)
 
 from pprint import pprint
 
-# Look at parameters used by our current forest
-print('Parameters currently in use:\n')
-pprint(rf.get_params())
-
-
-
-from sklearn.model_selection import RandomizedSearchCV
-
-# Number of trees in random forest
-n_estimators = [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)]
-# Number of features to consider at every split
-max_features = ['auto', 'sqrt']
-# Maximum number of levels in tree
-max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
-max_depth.append(None)
-# Minimum number of samples required to split a node
-min_samples_split = [2, 5, 10]
-# Minimum number of samples required at each leaf node
-min_samples_leaf = [1, 2, 4]
-# Method of selecting samples for training each tree
-bootstrap = [True, False]
-
-# Create the random grid
-random_grid = {'n_estimators': n_estimators,
-               'max_features': max_features,
-               'max_depth': max_depth,
-               'min_samples_split': min_samples_split,
-               'min_samples_leaf': min_samples_leaf,
-               'bootstrap': bootstrap}
-
-pprint(random_grid)
-
-# Use the random grid to search for best hyperparameters
-# First create the base model to tune
-rf = RandomForestRegressor(random_state = 42)
-# Random search of parameters, using 3 fold cross validation,
-# search across 100 different combinations, and use all available cores
-rf_random = RandomizedSearchCV(estimator=rf, param_distributions=random_grid,
-                              n_iter = 100, scoring='neg_mean_absolute_error',
-                              cv = 3, verbose=2, random_state=42, n_jobs=-1,
-                              return_train_score=True)
-
-# Fit the random search model
-rf_random.fit(train_features, train_labels);
-
-rf_random.best_params_
-
-
-
-rf_random.cv_results_
 
 
 def evaluate(model, test_features, test_labels):
@@ -92,16 +42,6 @@ def evaluate(model, test_features, test_labels):
 
     return accuracy
 
-base_model = RandomForestRegressor(n_estimators = 10, random_state = 42)
-base_model.fit(train_features, train_labels)
-base_accuracy = evaluate(base_model, test_features, test_labels)
-
-
-
-best_random = rf_random.best_estimator_
-random_accuracy = evaluate(best_random, test_features, test_labels)
-
-print('Improvement of {:0.2f}%.'.format( 100 * (random_accuracy - base_accuracy) / base_accuracy))
 
 from sklearn.model_selection import GridSearchCV
 
@@ -109,10 +49,10 @@ from sklearn.model_selection import GridSearchCV
 param_grid = {
     'bootstrap': [True],
     'max_depth': [80, 90, 100, 110],
-    'max_features': [5,6,7,8,9],
+    'max_features': [5,7,9,11,13,14],
     'min_samples_leaf': [3, 4, 5],
     'min_samples_split': [8, 10, 12],
-    'n_estimators': [200, 300,500, 1000]
+    'n_estimators': [ 300,500, 700, 1000]
 }
 
 # Create a base model
@@ -132,5 +72,5 @@ grid_search.best_params_
 best_grid = grid_search.best_estimator_
 grid_accuracy = evaluate(best_grid, test_features, test_labels)
 
-print('Improvement of {:0.2f}%.'.format( 100 * (grid_accuracy - base_accuracy) / base_accuracy))
+
 
