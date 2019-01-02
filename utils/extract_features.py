@@ -1,14 +1,13 @@
 import random
 import numpy as np
 import csv
-from sklearn.feature_extraction.text import TfidfVectorizer
 import nltk
 import scipy
 import igraph
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
-#from utils.TransformerDecomposition import TransformerDecomposition
-
+import tqdm
+import os
 """
 nltk.download('punkt') # for tokenization
 nltk.download('stopwords')"""
@@ -16,30 +15,33 @@ nltk.download('stopwords')"""
 
 
 class features_dataset:
+
     def __init__(self, prepocess_all, ratio=0.10):
-        """
 
-        :param ratio:
-        """
-        if prepocess_all:
-            self.glove = self.load_glove_model("./data_baseline/glove6B/glove.6B.100d.txt")
-            #self.decomposition = TransformerDecomposition()
 
-        with open("./data_baseline/testing_set.txt", "r") as f:
+        # do some nltk stuff (for stopwords, tokenization,...)
+        # nltk.download('punkt')  # for tokenization
+        # nltk.download('stopwords')
+        self.stpwds = set(nltk.corpus.stopwords.words("english"))
+        self.stemmer = nltk.stem.PorterStemmer()
+
+        # read training and test set
+        print(os.path.dirname(__file__))
+        with open(os.path.join(os.path.dirname(__file__), '..', 'data', 'testing_set.txt'), "r") as f:
             reader = csv.reader(f)
             testing_set = list(reader)
-        self.testing_set = [element[0].split(" ") for element in testing_set]
-        with open("./data_baseline/training_set.txt", "r") as f:
+        with open(os.path.join(os.path.dirname(__file__), '..', 'data', 'training_set.txt'), "r") as f:
             reader = csv.reader(f)
             training_set = list(reader)
         self.training_set = [element[0].split(" ") for element in training_set]
-        to_keep = random.sample(range(len(self.training_set)), k=int(round(len(self.training_set) * ratio)))
+        self.testing_set = [element[0].split(" ") for element in testing_set]
+        to_keep = random.sample(range(len(self.training_set)), k=int(round(len(training_set)*ratio)))
         self.training_set_reduced = [self.training_set[i] for i in to_keep]
-        ###############################
-        # beating the random baseline #
-        ###############################
-        # the following script gets an F1 score of approximately 0.66
-        # data loading and preprocessing
+
+        with open(os.path.join(os.path.dirname(__file__), '..', 'data', 'node_information.csv'), "r") as f:
+            reader = csv.reader(f)
+            self.node_info = list(reader)
+        # EXTRACT INFORMATION FROM "node_information.csv"
         # the columns of the data frame below are:
         # (1) paper unique ID (integer)
         # (2) publication year (integer)
@@ -47,10 +49,6 @@ class features_dataset:
         # (4) authors (strings separated by ,)
         # (5) name of journal (optional) (string)
         # (6) abstract (string) - lowercased, free of punctuation except intra-word dashes
-        with open("./data_baseline/node_information.csv", "r") as f:
-            reader = csv.reader(f)
-            self.node_info = list(reader)
-
         self.IDs = [element[0] for element in self.node_info]
         self.publication_years = [element[1] for element in self.node_info]
         self.titles = [element[2] for element in self.node_info]
@@ -67,23 +65,32 @@ class features_dataset:
         self.vectorizer_authors = TfidfVectorizer()
         self.features_TFIDF_authors = self.vectorizer_authors.fit_transform(self.authors)
 
+        self.features = dict()
+        self.training_labels = None
+        self.train_labels = None
+        self.valid_labels = None
+        self.prediction = None
+        self.fscore_v = None
+        self.fscore_t = None
         self.G = igraph.Graph(directed=True)
         self.G_und = None
-        self.edges = [(element[0], element[1]) for element in self.training_set if element[2] == "1"]
-        self.nodes = self.IDs
-        self.G.add_vertices(self.nodes)
-        self.G.add_edges(self.edges)
-        self.G_und = self.G.as_undirected()
-
-
-        self.stpwds = set(nltk.corpus.stopwords.words("english"))
-        self.stemmer = nltk.stem.PorterStemmer()
-
 
 
     def prepocess_data(self):
 
-        for k, type_data in enumerate([self.training_set_reduced, self.testing_set]):
+        edges = [(element[0], element[1]) for element in self.training_set if element[2] == "1"]
+        nodes = self.IDs
+        self.G.add_vertices(nodes)
+        self.G.add_edges(edges)
+        self.G_und = self.G.as_undirected()
+
+        datasets = [self.training_set_reduced, self.testing_set]
+        datasets_name = ["training", "testing"]
+
+        for k in range(2):
+        # for k, type_data in enumerate([self.training_set_reduced, self.testing_set]):
+
+            dataset = datasets[k]
 
             # number of overlapping words in title
             overlap_title = []
@@ -115,18 +122,19 @@ class features_dataset:
             Resource_allocation = []
 
             counter = 0
-            for i in range(len(type_data)):
-                source = self.training_set_reduced[i][0]
-                target = self.training_set_reduced[i][1]
+            for i in tqdm.tqdm(range(len(dataset))):
+
+                source = dataset[i][0]
+                target = dataset[i][1]
 
                 source_info = [element for element in self.node_info if element[0] == source][0]
                 target_info = [element for element in self.node_info if element[0] == target][0]
 
                 index_source = self.IDs.index(source)
                 index_target = self.IDs.index(target)
+
                 list_source = self.G.neighbors(source)
                 list_target = self.G.neighbors(target)
-
 
                 # convert to lowercase and tokenize
                 source_title = source_info[2].lower().split(" ")
@@ -138,20 +146,20 @@ class features_dataset:
                 target_title = [token for token in target_title if token not in self.stpwds]
                 target_title = [self.stemmer.stem(token) for token in target_title]
 
+
+
                 source_title_glove = self.get_glove_matrix(source_info[2].lower().split(" "))
                 target_title_glove = self.get_glove_matrix(target_info[2].lower().split(" "))
-
                 source_abstract_glove = self.get_glove_matrix(source_info[5].lower().split(" "))
                 target_abstract_glove = self.get_glove_matrix(target_info[5].lower().split(" "))
-
                 distance_title = scipy.spatial.distance.euclidean(source_title_glove, target_title_glove)
                 distance_abstract = scipy.spatial.distance.euclidean(source_abstract_glove, target_abstract_glove)
                 Distance_abstract.append(distance_abstract)
                 Distance_title.append(distance_title)
 
+
                 source_auth = source_info[3].split(",")
                 target_auth = target_info[3].split(",")
-
                 overlap_title.append(len(set(source_title).intersection(set(target_title))))
                 temp_diff.append(int(source_info[1]) - int(target_info[1]))
                 comm_auth.append(len(set(source_auth).intersection(set(target_auth))))
@@ -160,14 +168,14 @@ class features_dataset:
 
                 comm_neighbors.append(len(list(set(list_source).intersection(list_target))))
                 no_edge.append(self.G.edge_disjoint_paths(index_source, index_target))
-                if k == 0 and type_data[i][2] == "1":
+                if k == 0 and dataset[i][2] == "1":
                     self.G.delete_edges((index_source, index_target))
                     self.G_und.delete_edges((index_source, index_target))
                 short_path = min(100000, self.G.shortest_paths_dijkstra(source=source, target=target)[0][0])
                 shortest_path_dijkstra.append(short_path)
                 short_path_und = min(100000, self.G_und.shortest_paths_dijkstra(source=source, target=target)[0][0])
                 shortest_path_dijkstra_und.append(short_path_und)
-                if k == 0 and type_data[i][2] == "1":
+                if k == 0 and dataset[i][2] == "1":
                     self.G.add_edge(index_source, index_target)
                     self.G_und.add_edge(index_source, index_target)
 
@@ -240,11 +248,10 @@ class features_dataset:
         num_inc_edges = np.load('./features_data/num_inc_edges_train.npy')
         Distance_abstract = np.load('./features_data/Distance_abstract_train.npy')
         Distance_title = np.load('./features_data/Distance_title_train.npy')
-        tfidf_distance_corpus = np.load('./features_data/tfidf_distance_corpus_train.npy')
-        tfidf_distance_titles = np.load('./features_data/tfidf_distance_titles_train.npy')
+        tfidf_distance_corpus = np.load('./features_data/tfidf_distance_corpus_train.npy').reshape(61551)
+        tfidf_distance_titles = np.load('./features_data/tfidf_distance_titles_train.npy').reshape(61551)
         jaccard_und = np.load('./features_data/jaccard_und_train.npy')
         Resource_allocation = np.load('./features_data/Resource_allocation_train.npy')
-
         self.train_features = np.array([overlap_title, temp_diff, comm_auth,
                                         num_inc_edges, Distance_abstract, Distance_title,
                                         shortest_path_dijkstra, shortest_path_dijkstra_und,
@@ -261,8 +268,8 @@ class features_dataset:
         num_inc_edges = np.load('./features_data/num_inc_edges_test.npy')
         Distance_abstract = np.load('./features_data/Distance_abstract_test.npy')
         Distance_title = np.load('./features_data/Distance_title_test.npy')
-        tfidf_distance_corpus = np.load('./features_data/tfidf_distance_corpus_test.npy')
-        tfidf_distance_titles = np.load('./features_data/tfidf_distance_titles_test.npy')
+        tfidf_distance_corpus = np.load('./features_data/tfidf_distance_corpus_test.npy').reshape(32648)
+        tfidf_distance_titles = np.load('./features_data/tfidf_distance_titles_test.npy').reshape(32648)
         jaccard_und = np.load('./features_data/jaccard_und_test.npy')
         Resource_allocation = np.load('./features_data/Resource_allocation_test.npy')
 
@@ -270,7 +277,7 @@ class features_dataset:
                                         num_inc_edges, Distance_abstract, Distance_title,
                                         shortest_path_dijkstra, shortest_path_dijkstra_und,
                                         comm_neighbors, no_edge, tfidf_distance_corpus, tfidf_distance_titles,
-                                        jaccard_und, Resource_allocation]).T
+                                        jaccard_und, Resource_allocation[:]]).T
 
         self.training_labels = np.array([int(element[2]) for element in self.training_set_reduced])
         return(self.train_features, self.training_labels, self.test_features)

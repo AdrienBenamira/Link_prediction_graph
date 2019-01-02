@@ -7,7 +7,7 @@ from joblib import dump
 import lightgbm as lgb
 
 
-preprocess_all = True
+preprocess_all = False
 norm =False
 
 E_F = features_dataset(preprocess_all)
