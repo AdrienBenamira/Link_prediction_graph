@@ -18,6 +18,9 @@ class features_dataset:
 
     def __init__(self, prepocess_all, ratio=0.10):
 
+        if prepocess_all:
+            self.glove = self.load_glove_model("./data_baseline/glove6B/glove.6B.100d.txt")
+            # self.decomposition = TransformerDecomposition()
 
         # do some nltk stuff (for stopwords, tokenization,...)
         # nltk.download('punkt')  # for tokenization
@@ -27,10 +30,10 @@ class features_dataset:
 
         # read training and test set
         print(os.path.dirname(__file__))
-        with open(os.path.join(os.path.dirname(__file__), '..', 'data', 'testing_set.txt'), "r") as f:
+        with open(os.path.join(os.path.dirname(__file__), '..', 'data_baseline', 'testing_set.txt'), "r") as f:
             reader = csv.reader(f)
             testing_set = list(reader)
-        with open(os.path.join(os.path.dirname(__file__), '..', 'data', 'training_set.txt'), "r") as f:
+        with open(os.path.join(os.path.dirname(__file__), '..', 'data_baseline', 'training_set.txt'), "r") as f:
             reader = csv.reader(f)
             training_set = list(reader)
         self.training_set = [element[0].split(" ") for element in training_set]
@@ -38,7 +41,7 @@ class features_dataset:
         to_keep = random.sample(range(len(self.training_set)), k=int(round(len(training_set)*ratio)))
         self.training_set_reduced = [self.training_set[i] for i in to_keep]
 
-        with open(os.path.join(os.path.dirname(__file__), '..', 'data', 'node_information.csv'), "r") as f:
+        with open(os.path.join(os.path.dirname(__file__), '..', 'data_baseline', 'node_information.csv'), "r") as f:
             reader = csv.reader(f)
             self.node_info = list(reader)
         # EXTRACT INFORMATION FROM "node_information.csv"
@@ -201,9 +204,9 @@ class features_dataset:
 
 
 
-            self.training_labels = np.array([int(element[2]) for element in self.training_set_reduced])
+            training_labels = np.array([int(element[2]) for element in self.training_set_reduced])
 
-            if type_data == self.training_set_reduced:
+            if datasets[k] == self.training_set_reduced:
                 np.save('./features_data/shortest_path_dijkstra_train.npy', np.array(shortest_path_dijkstra))
                 np.save('./features_data/shortest_path_dijkstra_und_train.npy', np.array(shortest_path_dijkstra_und))
                 np.save('./features_data/comm_neighbors_train.npy', np.array(comm_neighbors))
@@ -212,7 +215,7 @@ class features_dataset:
                 np.save('./features_data/temp_diff_train.npy', np.array(temp_diff))
                 np.save('./features_data/comm_auth_train.npy', np.array(comm_auth))
                 np.save('./features_data/num_inc_edges_train.npy', np.array(num_inc_edges))
-                np.save('./features_data/labels.npy', np.array(self.training_labels))
+                np.save('./features_data/labels.npy', np.array(training_labels))
                 np.save('./features_data/Distance_abstract_train.npy', np.array(Distance_abstract))
                 np.save('./features_data/Distance_title_train.npy', np.array(Distance_title))
                 np.save('./features_data/tfidf_distance_corpus_train.npy', np.array(tfidf_distance_corpus))
@@ -252,7 +255,7 @@ class features_dataset:
         tfidf_distance_titles = np.load('./features_data/tfidf_distance_titles_train.npy').reshape(61551)
         jaccard_und = np.load('./features_data/jaccard_und_train.npy')
         Resource_allocation = np.load('./features_data/Resource_allocation_train.npy')
-        self.train_features = np.array([overlap_title, temp_diff, comm_auth,
+        train_features = np.array([overlap_title, temp_diff, comm_auth,
                                         num_inc_edges, Distance_abstract, Distance_title,
                                         shortest_path_dijkstra, shortest_path_dijkstra_und,
                                         comm_neighbors, no_edge, tfidf_distance_corpus, tfidf_distance_titles,
@@ -273,14 +276,14 @@ class features_dataset:
         jaccard_und = np.load('./features_data/jaccard_und_test.npy')
         Resource_allocation = np.load('./features_data/Resource_allocation_test.npy')
 
-        self.test_features = np.array([overlap_title, temp_diff, comm_auth,
+        test_features = np.array([overlap_title, temp_diff, comm_auth,
                                         num_inc_edges, Distance_abstract, Distance_title,
                                         shortest_path_dijkstra, shortest_path_dijkstra_und,
                                         comm_neighbors, no_edge, tfidf_distance_corpus, tfidf_distance_titles,
                                         jaccard_und, Resource_allocation[:]]).T
 
-        self.training_labels = np.array([int(element[2]) for element in self.training_set_reduced])
-        return(self.train_features, self.training_labels, self.test_features)
+        training_labels = np.load('./features_data/labels.npy')
+        return(train_features, training_labels, test_features)
 
 
     def add_feature_transformer(self):
