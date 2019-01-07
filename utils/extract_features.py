@@ -88,7 +88,7 @@ class features_dataset:
         self.G_und = self.G.as_undirected()
 
         datasets = [self.training_set_reduced, self.testing_set]
-        datasets_name = ["training", "testing"]
+
 
         for k in range(2):
         # for k, type_data in enumerate([self.training_set_reduced, self.testing_set]):
@@ -280,49 +280,42 @@ class features_dataset:
                                         num_inc_edges, Distance_abstract, Distance_title,
                                         shortest_path_dijkstra, shortest_path_dijkstra_und,
                                         comm_neighbors, no_edge, tfidf_distance_corpus, tfidf_distance_titles,
-                                        jaccard_und, Resource_allocation[:]]).T
+                                        jaccard_und, Resource_allocation]).T
 
         training_labels = np.load('./features_data/labels.npy')
         return(train_features, training_labels, test_features)
 
 
-    def add_feature_transformer(self):
-
-        for type_data in [self.training_set_reduced, self.testing_set]:
-            Distance_abstract = []
-            Distance_title =[]
+    def add_feature(self):
+        edges = [(element[0], element[1]) for element in self.training_set if element[2] == "1"]
+        nodes = self.IDs
+        self.G.add_vertices(nodes)
+        self.G.add_edges(edges)
+        self.G_und = self.G.as_undirected()
+        datasets = [self.training_set_reduced, self.testing_set]
+        for k in range(2):
+            # for k, type_data in enumerate([self.training_set_reduced, self.testing_set]):
+            dataset = datasets[k]
+            adamic_adar = []
+            preferential_attachment = []
             counter = 0
-            for i in range(len(type_data)):
-                # for i in range(100):
-                source = type_data[i][0]
-                target = type_data[i][1]
-
-                source_info = [element for element in self.node_info if element[0] == source][0]
-                target_info = [element for element in self.node_info if element[0] == target][0]
-
-                # convert to lowercase and tokenize
-                source_title = source_info[2].lower().split(" ")
-                print(source_title)
-                # remove stopwords
-                source_title = [token for token in source_title if token not in self.stpwds]
-                source_title = [self.stemmer.stem(token) for token in source_title]
-                print(source_title)
-
-
-                source_title_glove = self.decomposition.apply(source_info[2].lower().split(" "))
-                target_title_glove = self.decomposition.apply(target_info[2].lower().split(" "))
-
-                source_abstract_glove = self.decomposition.apply(source_info[5].lower().split(" "))
-                target_abstract_glove = self.decomposition.apply(target_info[5].lower().split(" "))
-
-                distance_title = scipy.spatial.distance.euclidean(source_title_glove, target_title_glove)
-                distance_abstract = scipy.spatial.distance.euclidean(source_abstract_glove, target_abstract_glove)
-                Distance_abstract.append(distance_abstract)
-                Distance_title.append(distance_title)
-
+            for i in tqdm.tqdm(range(len(dataset))):
+                #TODO :
+                #https://networkx.github.io/documentation/networkx-1.10/_modules/networkx/algorithms/link_prediction.html#preferential_attachment
+                #https://igraph.org/python/doc/igraph.GraphBase-class.html#similarity_inverse_log_weighted
+                pass
                 counter += 1
                 if counter % 1000 == True:
                     print(counter, "testing examples processsed")
+                    if datasets[k] == self.training_set_reduced:
+                        np.save('./features_data/preferential_attachment.npy', np.array(preferential_attachment))
+                        np.save('./features_data/adamic_adar.npy',
+                                np.array(adamic_adar))
+                    else:
+                        np.save('./features_data/preferential_attachment.npy', np.array(preferential_attachment))
+                        np.save('./features_data/adamic_adar.npy',
+                                np.array(adamic_adar))
+
 
 
 

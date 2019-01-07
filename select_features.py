@@ -1,8 +1,9 @@
-from utils.extract_features import *
+from sklearn.linear_model import LogisticRegression
+
 from sklearn.ensemble import RandomForestClassifier
-import pandas as pd
-from utils.extract_features import *
 from sklearn.metrics import f1_score
+
+from utils.extract_features import *
 from sklearn import svm
 from joblib import dump
 import lightgbm as lgb
@@ -17,14 +18,19 @@ if preprocess_all:
 
 train_features, training_labels, test_features = E_F.load_features_all()
 
-"""
+
 m = train_features.mean(axis=0)
 std = train_features.std(axis=0)
 
 
 train_features = (train_features - m) / std
 test_features = (test_features - m) / std
-"""
+training_labels = training_labels[:int(train_features.shape[0] * 0.1)]
+train_features = train_features[:int(train_features.shape[0] * 0.1)]
+
+print(train_features.shape)
+print(training_labels.shape)
+
 
 fetures_test = np.linspace(train_features.shape[1],1,train_features.shape[1])-1
 
@@ -43,15 +49,38 @@ def combinliste(seq, k):
         i += 1
     return p
 
+
+def train_predict_save(model, name):
+    fscore_t = f1_score(training_labels[:int(train_features.shape[0] * 0.1)],
+                        model.predict(X_test[:int(train_features.shape[0] * 0.1)]))
+    fscore_v = f1_score(training_labels[int(train_features.shape[0] * 0.1):],
+                        model.predict(X_test[int(train_features.shape[0] * 0.1):]))
+    print(name + " model: F1 score - Training %.3f - Validation %.3f" % (fscore_t, fscore_v))
+
 for k in range(9, 1, -1):
     a_tester = combinliste(fetures_test, k+2)
     for i, liste in enumerate(a_tester):
         liste = list(map(int, liste))
         X_test = train_features[:, liste]
         #clf = svm.LinearSVC()
-        modelRF = RandomForestClassifier(n_estimators=500)
+        #modelRF = RandomForestClassifier(n_estimators=500)
         #scores = cross_val_score(clf, X_test, training_labels,cv=5, scoring='f1_macro')
-        scoresRF = cross_val_score(modelRF, X_test, training_labels, cv=3, scoring='f1_macro')
+        #scoresRF = cross_val_score(modelRF, X_test, training_labels, cv=3, scoring='f1_macro')
+        modelSVM = svm.LinearSVC()
+        scoresSVM = modelSVM.fit(X_test, training_labels)
+        logit_model = LogisticRegression()
+        logit_model = logit_model.fit(X_test, training_labels)
+
+        modelGB = lgb.LGBMClassifier(objective='binary', reg_lambda=10, n_estimators=10000)
+        modelGB.fit(X_test[:int(train_features.shape[0] * 0.1)],
+                    training_labels[:int(train_features.shape[0] * 0.1)],
+                    eval_set=[(X_test[int(train_features.shape[0] * 0.1):],
+                               training_labels[int(train_features.shape[0] * 0.1):])],
+                    early_stopping_rounds=50, verbose=False)
+
+        train_predict_save(modelSVM, "SVM")
+        train_predict_save(modelGB, "GB")
+        print(liste)
 
 
 
@@ -61,6 +90,3 @@ for k in range(9, 1, -1):
         fscore_v = f1_score(training_labels[int(train_features.shape[0] * 0.9):],
                             clf.predict(X_test[int(train_features.shape[0] * 0.9):]))
         """
-
-        #print(str(liste)+ " modelSVM: F1 score - Mean %.3f - std %.3f" % (scores.mean(), scores.std()*2))
-        print(str(liste) + " modelRF: F1 score - mean %.3f - std %.3f" % (scoresRF.mean(), scoresRF.std() * 2))
