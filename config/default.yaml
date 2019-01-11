@@ -1,0 +1,39 @@
+path_glove: ../data_baseline/
+#Path to Glove file
+dataset_path: data_baseline
+#path to txt file
+feature_path: ./features_data/
+#path to features created
+preprocess_all: No
+#Create the features
+norm: Yes
+#Normalized the features
+features_a_tester:  [1, 2, 4, 6, 7, 8, 10, 11, 3, 13]
+#best : [1, 2, 4, 6, 7, 8, 10, 11, 3, 13]
+#0 overlap_title,
+#1 temp_diff,
+#2  comm_auth,
+#3 num_inc_edges,
+#4  Distance_abstract,
+#5  Distance_title,
+#6 shortest_path_dijkstra
+#7 shortest_path_dijkstra_und
+#8 ,comm_neighbors,
+#9 no_edge,
+#10  tfidf_distance_corpus,
+#11  tfidf_distance_titles,
+#12 jaccard_und
+#13 Resource_allocation
+model: GB
+# Lin
+# LinSVM
+# GB
+# RF
+pourcentage_split_val: 0.99
+#Pourcentage split
+num_split_cross_val: 25
+name_output: output.csv
+verbose: 2
+n_estimator_GB: 10000
+reg_lambda_gb: 10
+n_estimator_RF: 500

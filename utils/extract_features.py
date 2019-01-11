@@ -8,18 +8,21 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 import tqdm
 import os
+from utils.Config import Config
 """
 nltk.download('punkt') # for tokenization
-nltk.download('stopwords')"""
+nltk.download('stopwords')
+"""
 
 
+config = Config("config/")
 
 class features_dataset:
 
     def __init__(self, prepocess_all, ratio=0.10):
 
         if prepocess_all:
-            self.glove = self.load_glove_model("./data_baseline/glove6B/glove.6B.100d.txt")
+            self.glove = self.load_glove_model(config.path_glove + "glove6B/glove.6B.100d.txt")
             # self.decomposition = TransformerDecomposition()
 
         # do some nltk stuff (for stopwords, tokenization,...)
@@ -30,10 +33,10 @@ class features_dataset:
 
         # read training and test set
         print(os.path.dirname(__file__))
-        with open(os.path.join(os.path.dirname(__file__), '..', 'data_baseline', 'testing_set.txt'), "r") as f:
+        with open(os.path.join(os.path.dirname(__file__), '..', config.dataset_path, 'testing_set.txt'), "r") as f:
             reader = csv.reader(f)
             testing_set = list(reader)
-        with open(os.path.join(os.path.dirname(__file__), '..', 'data_baseline', 'training_set.txt'), "r") as f:
+        with open(os.path.join(os.path.dirname(__file__), '..', config.dataset_path, 'training_set.txt'), "r") as f:
             reader = csv.reader(f)
             training_set = list(reader)
         self.training_set = [element[0].split(" ") for element in training_set]
@@ -41,7 +44,7 @@ class features_dataset:
         to_keep = random.sample(range(len(self.training_set)), k=int(round(len(training_set)*ratio)))
         self.training_set_reduced = [self.training_set[i] for i in to_keep]
 
-        with open(os.path.join(os.path.dirname(__file__), '..', 'data_baseline', 'node_information.csv'), "r") as f:
+        with open(os.path.join(os.path.dirname(__file__), '..', config.dataset_path, 'node_information.csv'), "r") as f:
             reader = csv.reader(f)
             self.node_info = list(reader)
         # EXTRACT INFORMATION FROM "node_information.csv"
@@ -207,74 +210,74 @@ class features_dataset:
             training_labels = np.array([int(element[2]) for element in self.training_set_reduced])
 
             if datasets[k] == self.training_set_reduced:
-                np.save('./features_data/shortest_path_dijkstra_train.npy', np.array(shortest_path_dijkstra))
-                np.save('./features_data/shortest_path_dijkstra_und_train.npy', np.array(shortest_path_dijkstra_und))
-                np.save('./features_data/comm_neighbors_train.npy', np.array(comm_neighbors))
-                np.save('./features_data/no_edge_train.npy', np.array(no_edge))
-                np.save('./features_data/overlap_title_train.npy', np.array(overlap_title))
-                np.save('./features_data/temp_diff_train.npy', np.array(temp_diff))
-                np.save('./features_data/comm_auth_train.npy', np.array(comm_auth))
-                np.save('./features_data/num_inc_edges_train.npy', np.array(num_inc_edges))
-                np.save('./features_data/labels.npy', np.array(training_labels))
-                np.save('./features_data/Distance_abstract_train.npy', np.array(Distance_abstract))
-                np.save('./features_data/Distance_title_train.npy', np.array(Distance_title))
-                np.save('./features_data/tfidf_distance_corpus_train.npy', np.array(tfidf_distance_corpus))
-                np.save('./features_data/tfidf_distance_titles_train.npy', np.array(tfidf_distance_titles))
-                np.save('./features_data/jaccard_und_train.npy', np.array(jaccard_und))
-                np.save('./features_data/Resource_allocation_train.npy', np.array(Resource_allocation))
+                np.save(config.feature_path + 'shortest_path_dijkstra_train.npy', np.array(shortest_path_dijkstra))
+                np.save(config.feature_path + 'shortest_path_dijkstra_und_train.npy', np.array(shortest_path_dijkstra_und))
+                np.save(config.feature_path + 'comm_neighbors_train.npy', np.array(comm_neighbors))
+                np.save(config.feature_path + 'no_edge_train.npy', np.array(no_edge))
+                np.save(config.feature_path + 'overlap_title_train.npy', np.array(overlap_title))
+                np.save(config.feature_path + 'temp_diff_train.npy', np.array(temp_diff))
+                np.save(config.feature_path + 'comm_auth_train.npy', np.array(comm_auth))
+                np.save(config.feature_path + 'num_inc_edges_train.npy', np.array(num_inc_edges))
+                np.save(config.feature_path + 'labels.npy', np.array(training_labels))
+                np.save(config.feature_path + 'Distance_abstract_train.npy', np.array(Distance_abstract))
+                np.save(config.feature_path + 'Distance_title_train.npy', np.array(Distance_title))
+                np.save(config.feature_path + 'tfidf_distance_corpus_train.npy', np.array(tfidf_distance_corpus))
+                np.save(config.feature_path + 'tfidf_distance_titles_train.npy', np.array(tfidf_distance_titles))
+                np.save(config.feature_path + 'jaccard_und_train.npy', np.array(jaccard_und))
+                np.save(config.feature_path + 'Resource_allocation_train.npy', np.array(Resource_allocation))
             else:
-                np.save('./features_data/shortest_path_dijkstra_test.npy', np.array(shortest_path_dijkstra))
-                np.save('./features_data/shortest_path_dijkstra_und_test.npy', np.array(shortest_path_dijkstra_und))
-                np.save('./features_data/comm_neighbors_test.npy', np.array(comm_neighbors))
-                np.save('./features_data/no_edge_test.npy', np.array(no_edge))
-                np.save('./features_data/overlap_title_test.npy', np.array(overlap_title))
-                np.save('./features_data/temp_diff_test.npy', np.array(temp_diff))
-                np.save('./features_data/comm_auth_test.npy', np.array(comm_auth))
-                np.save('./features_data/num_inc_edges_test.npy', np.array(num_inc_edges))
-                np.save('./features_data/Distance_abstract_test.npy', np.array(Distance_abstract))
-                np.save('./features_data/Distance_title_test.npy', np.array(Distance_title))
-                np.save('./features_data/tfidf_distance_corpus_test.npy', np.array(tfidf_distance_corpus))
-                np.save('./features_data/tfidf_distance_titles_test.npy', np.array(tfidf_distance_titles))
-                np.save('./features_data/jaccard_und_test.npy', np.array(jaccard_und))
-                np.save('./features_data/Resource_allocation_test.npy', np.array(Resource_allocation))
+                np.save(config.feature_path + 'shortest_path_dijkstra_test.npy', np.array(shortest_path_dijkstra))
+                np.save(config.feature_path + 'shortest_path_dijkstra_und_test.npy', np.array(shortest_path_dijkstra_und))
+                np.save(config.feature_path + 'comm_neighbors_test.npy', np.array(comm_neighbors))
+                np.save(config.feature_path + 'no_edge_test.npy', np.array(no_edge))
+                np.save(config.feature_path + 'overlap_title_test.npy', np.array(overlap_title))
+                np.save(config.feature_path + 'temp_diff_test.npy', np.array(temp_diff))
+                np.save(config.feature_path + 'comm_auth_test.npy', np.array(comm_auth))
+                np.save(config.feature_path + 'num_inc_edges_test.npy', np.array(num_inc_edges))
+                np.save(config.feature_path + 'Distance_abstract_test.npy', np.array(Distance_abstract))
+                np.save(config.feature_path + 'Distance_title_test.npy', np.array(Distance_title))
+                np.save(config.feature_path + 'tfidf_distance_corpus_test.npy', np.array(tfidf_distance_corpus))
+                np.save(config.feature_path + 'tfidf_distance_titles_test.npy', np.array(tfidf_distance_titles))
+                np.save(config.feature_path + 'jaccard_und_test.npy', np.array(jaccard_und))
+                np.save(config.feature_path + 'Resource_allocation_test.npy', np.array(Resource_allocation))
 
 
     def load_features_all(self):
 
-        shortest_path_dijkstra = np.load('./features_data/shortest_path_dijkstra_train.npy')
-        shortest_path_dijkstra_und = np.load('./features_data/shortest_path_dijkstra_und_train.npy')
-        comm_neighbors = np.load('./features_data/comm_neighbors_train.npy')
-        no_edge = np.load('./features_data/no_edge_train.npy')
-        overlap_title = np.load('./features_data/overlap_title_train.npy')
-        temp_diff = np.load('./features_data/temp_diff_train.npy')
-        comm_auth = np.load('./features_data/comm_auth_train.npy')
-        num_inc_edges = np.load('./features_data/num_inc_edges_train.npy')
-        Distance_abstract = np.load('./features_data/Distance_abstract_train.npy')
-        Distance_title = np.load('./features_data/Distance_title_train.npy')
-        tfidf_distance_corpus = np.load('./features_data/tfidf_distance_corpus_train.npy').reshape(61551)
-        tfidf_distance_titles = np.load('./features_data/tfidf_distance_titles_train.npy').reshape(61551)
-        jaccard_und = np.load('./features_data/jaccard_und_train.npy')
-        Resource_allocation = np.load('./features_data/Resource_allocation_train.npy')
+        shortest_path_dijkstra = np.load(config.feature_path + 'shortest_path_dijkstra_train.npy')
+        shortest_path_dijkstra_und = np.load(config.feature_path + 'shortest_path_dijkstra_und_train.npy')
+        comm_neighbors = np.load(config.feature_path + 'comm_neighbors_train.npy')
+        no_edge = np.load(config.feature_path + 'no_edge_train.npy')
+        overlap_title = np.load(config.feature_path + 'overlap_title_train.npy')
+        temp_diff = np.load(config.feature_path + 'temp_diff_train.npy')
+        comm_auth = np.load(config.feature_path + 'comm_auth_train.npy')
+        num_inc_edges = np.load(config.feature_path + 'num_inc_edges_train.npy')
+        Distance_abstract = np.load(config.feature_path + 'Distance_abstract_train.npy')
+        Distance_title = np.load(config.feature_path + 'Distance_title_train.npy')
+        tfidf_distance_corpus = np.load(config.feature_path + 'tfidf_distance_corpus_train.npy').reshape(61551)
+        tfidf_distance_titles = np.load(config.feature_path + 'tfidf_distance_titles_train.npy').reshape(61551)
+        jaccard_und = np.load(config.feature_path + 'jaccard_und_train.npy')
+        Resource_allocation = np.load(config.feature_path + 'Resource_allocation_train.npy')
         train_features = np.array([overlap_title, temp_diff, comm_auth,
                                         num_inc_edges, Distance_abstract, Distance_title,
                                         shortest_path_dijkstra, shortest_path_dijkstra_und,
                                         comm_neighbors, no_edge, tfidf_distance_corpus, tfidf_distance_titles,
                                         jaccard_und, Resource_allocation]).T
 
-        shortest_path_dijkstra = np.load('./features_data/shortest_path_dijkstra_test.npy')
-        shortest_path_dijkstra_und = np.load('./features_data/shortest_path_dijkstra_und_test.npy')
-        comm_neighbors = np.load('./features_data/comm_neighbors_test.npy')
-        no_edge = np.load('./features_data/no_edge_test.npy')
-        overlap_title = np.load('./features_data/overlap_title_test.npy')
-        temp_diff = np.load('./features_data/temp_diff_test.npy')
-        comm_auth = np.load('./features_data/comm_auth_test.npy')
-        num_inc_edges = np.load('./features_data/num_inc_edges_test.npy')
-        Distance_abstract = np.load('./features_data/Distance_abstract_test.npy')
-        Distance_title = np.load('./features_data/Distance_title_test.npy')
-        tfidf_distance_corpus = np.load('./features_data/tfidf_distance_corpus_test.npy').reshape(32648)
-        tfidf_distance_titles = np.load('./features_data/tfidf_distance_titles_test.npy').reshape(32648)
-        jaccard_und = np.load('./features_data/jaccard_und_test.npy')
-        Resource_allocation = np.load('./features_data/Resource_allocation_test.npy')
+        shortest_path_dijkstra = np.load(config.feature_path + 'shortest_path_dijkstra_test.npy')
+        shortest_path_dijkstra_und = np.load(config.feature_path + 'shortest_path_dijkstra_und_test.npy')
+        comm_neighbors = np.load(config.feature_path + 'comm_neighbors_test.npy')
+        no_edge = np.load(config.feature_path + 'no_edge_test.npy')
+        overlap_title = np.load(config.feature_path + 'overlap_title_test.npy')
+        temp_diff = np.load(config.feature_path + 'temp_diff_test.npy')
+        comm_auth = np.load(config.feature_path + 'comm_auth_test.npy')
+        num_inc_edges = np.load(config.feature_path + 'num_inc_edges_test.npy')
+        Distance_abstract = np.load(config.feature_path + 'Distance_abstract_test.npy')
+        Distance_title = np.load(config.feature_path + 'Distance_title_test.npy')
+        tfidf_distance_corpus = np.load(config.feature_path + 'tfidf_distance_corpus_test.npy').reshape(32648)
+        tfidf_distance_titles = np.load(config.feature_path + 'tfidf_distance_titles_test.npy').reshape(32648)
+        jaccard_und = np.load(config.feature_path + 'jaccard_und_test.npy')
+        Resource_allocation = np.load(config.feature_path + 'Resource_allocation_test.npy')
 
         test_features = np.array([overlap_title, temp_diff, comm_auth,
                                         num_inc_edges, Distance_abstract, Distance_title,
@@ -282,40 +285,8 @@ class features_dataset:
                                         comm_neighbors, no_edge, tfidf_distance_corpus, tfidf_distance_titles,
                                         jaccard_und, Resource_allocation]).T
 
-        training_labels = np.load('./features_data/labels.npy')
+        training_labels = np.load(config.feature_path + 'labels.npy')
         return(train_features, training_labels, test_features)
-
-
-    def add_feature(self):
-        edges = [(element[0], element[1]) for element in self.training_set if element[2] == "1"]
-        nodes = self.IDs
-        self.G.add_vertices(nodes)
-        self.G.add_edges(edges)
-        self.G_und = self.G.as_undirected()
-        datasets = [self.training_set_reduced, self.testing_set]
-        for k in range(2):
-            # for k, type_data in enumerate([self.training_set_reduced, self.testing_set]):
-            dataset = datasets[k]
-            adamic_adar = []
-            preferential_attachment = []
-            counter = 0
-            for i in tqdm.tqdm(range(len(dataset))):
-                #TODO :
-                #https://networkx.github.io/documentation/networkx-1.10/_modules/networkx/algorithms/link_prediction.html#preferential_attachment
-                #https://igraph.org/python/doc/igraph.GraphBase-class.html#similarity_inverse_log_weighted
-                pass
-                counter += 1
-                if counter % 1000 == True:
-                    print(counter, "testing examples processsed")
-                    if datasets[k] == self.training_set_reduced:
-                        np.save('./features_data/preferential_attachment.npy', np.array(preferential_attachment))
-                        np.save('./features_data/adamic_adar.npy',
-                                np.array(adamic_adar))
-                    else:
-                        np.save('./features_data/preferential_attachment.npy', np.array(preferential_attachment))
-                        np.save('./features_data/adamic_adar.npy',
-                                np.array(adamic_adar))
-
 
 
 

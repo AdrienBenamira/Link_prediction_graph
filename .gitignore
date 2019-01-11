@@ -1,3 +1,5 @@
 features_data/*
 data_baseline/*
 model/*
+pdfs/*
+.ipynb_checkpoints/*
