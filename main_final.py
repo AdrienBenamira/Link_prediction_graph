@@ -29,9 +29,9 @@ a_tester = config.features_a_tester
 
 if config.model == "GB":
     model = lgb.LGBMClassifier(objective='binary', reg_lambda=config.reg_lambda_gb,
-                               n_estimators=config.n_estimator_GB   )
+                               n_estimators=config.n_estimator_GB)
 if config.model =="RF":
-    model = RandomForestClassifier(n_estimators=500)
+    model = RandomForestClassifier(n_estimators=config.n_estimator_RF)
 if config.model == "LinSVM":
     model = svm.LinearSVC()
 if config.model == "Lin":
@@ -55,7 +55,7 @@ for train_index, test_index in kf.split(train_features, training_labels):
     y_train, y_val = training_labels.iloc[train_index_new], training_labels.iloc[test_index_new]
     if config.model == "GB":
         model.fit(X_train, y_train, eval_set=[(X_val, y_val)],
-            early_stopping_rounds=50)
+            early_stopping_rounds=config.early_stop_gb)
     else:
         model.fit(X_train, y_train)
     predicts.append(model.predict(test_features))

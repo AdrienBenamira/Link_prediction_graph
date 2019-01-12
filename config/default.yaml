@@ -5,7 +5,7 @@ dataset_path: data_baseline
 feature_path: ./features_data/
 #path to features created
 preprocess_all: No
-#Create the features
+#Create the features, 1st time
 norm: Yes
 #Normalized the features
 features_a_tester:  [1, 2, 4, 6, 7, 8, 10, 11, 3, 13]
@@ -36,4 +36,5 @@ name_output: output.csv
 verbose: 2
 n_estimator_GB: 10000
 reg_lambda_gb: 10
+early_stop_gb: = 50
 n_estimator_RF: 500
