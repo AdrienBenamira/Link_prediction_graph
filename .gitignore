@@ -3,3 +3,4 @@ data_baseline/*
 model/*
 pdfs/*
 .ipynb_checkpoints/*
+.idea/*
