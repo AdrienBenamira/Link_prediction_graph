@@ -35,16 +35,7 @@ We have :
     * Resource_allocation
 
 
-
-![Alt text](images/correlation.png?raw=true "Title")
-
-![Alt text](images/importance_GB.png?raw=true "Title")
-
-![Alt text](images/importance_RF.png?raw=true "Title")
-
-![Alt text](images/nbre_feat.png?raw=true "Title")
-
-# Results
+# Results and report
 
 Report is available [here](https://github.com/AdrienBenamira/Link_prediction_graph/blob/master/NGSA_Kaggle_report.pdf)
 
@@ -59,4 +50,13 @@ Report is available [here](https://github.com/AdrienBenamira/Link_prediction_gra
 # Extra :
 
 Model_tunning.ipynb and Features.ipynb analyse our results
+
+
+![Alt text](images/correlation.png?raw=true "Title")
+
+![Alt text](images/importance_GB.png?raw=true "Title")
+
+![Alt text](images/importance_RF.png?raw=true "Title")
+
+![Alt text](images/nbre_feat.png?raw=true "Title")
 
